@@ -234,14 +234,18 @@
                tempRow.rate = numeral(row.Rate).value()
 
                   tempRow.reference = row.Reference
+                  tempRow.refShort = row.Reference.slice(-2)
                   tempRow.bookId = row.Beneficiary.match(/[ML]{2}\d{6}/g)
 
 
                   tempRow.currency = row.Buy_Cur + '-' + row.Sell_Cur
 
+                 // this.tradesPer = this.posts.filter(elem => elem.currency == currency)
 
-                
+
+                if(tempRow.refShort == '.2' || tempRow.refShort == '.1' || tempRow.refShort == '.3') {
                 this.cleanedData.push(tempRow)
+                }
               }
        
         }
@@ -269,7 +273,7 @@
                           symbol: '€'
                       }
                   });
-      
+
     },
   }
 
