@@ -3,12 +3,12 @@
     <div class="container">
       <!--UPLOAD-->
       <form enctype="multipart/form-data" novalidate v-if="isInitial || isSaving">
-        <h1>Upload images</h1>
+        <h1>Upload CSV</h1>
         <div class="dropbox">
           <input type="file" multiple :name="uploadFieldName" :disabled="isSaving" @change="filesChange($event.target.name, $event.target.files); fileCount = $event.target.files.length"
-            accept="image/*" class="input-file">
+            accept="text/csv" class="input-file">
             <p v-if="isInitial">
-              Drag your file(s) here to begin<br> or click to browse
+              Drag your csv file(s) here to begin<br> or click to browse
             </p>
             <p v-if="isSaving">
               Uploading {{ fileCount }} files...
@@ -17,14 +17,23 @@
       </form>
       <!--SUCCESS-->
       <div v-if="isSuccess">
-        <h2>Uploaded {{ uploadedFiles.length }} file(s) successfully.</h2>
+        <h2>Upload successfully.</h2>
         <p>
           <a href="javascript:void(0)" @click="reset()">Upload again</a>
         </p>
         <ul class="list-unstyled">
           <li v-for="item in uploadedFiles">
+            {{item.originalName}} ({{item.csvParse.data.length}} rows)<br>
+            {{parseInfo}} <br>
+            <br>
 
-            <img :src="item.url" class="img-responsive img-thumbnail" :alt="item.originalName">
+            Found {{cleanedData.length}} good trades between {{minDate}} and {{maxDate}}
+
+
+
+
+
+         
 
           </li>
         </ul>
@@ -35,7 +44,8 @@
         <p>
           <a href="javascript:void(0)" @click="reset()">Try again</a>
         </p>
-        <pre>{{ uploadError }}</pre>
+        <pre>{{ uploadError }} {{parseInfo}}</pre>
+
       </div>
     </div>
   </div>
@@ -45,7 +55,10 @@
   // swap as you need
   import { upload } from './file-upload.fake.service'; // fake service
   // import { upload } from './file-upload.service';   // real service
-  import { wait } from './utils';
+  //import { wait } from './utils';
+  import moment from 'moment';
+  import numeral from 'numeral';
+
 
   const STATUS_INITIAL = 0, STATUS_SAVING = 1, STATUS_SUCCESS = 2, STATUS_FAILED = 3;
 
@@ -56,7 +69,31 @@
         uploadedFiles: [],
         uploadError: null,
         currentStatus: null,
-        uploadFieldName: 'photos'
+        parseInfo: null,
+        uploadFieldName: 'photos',
+        //csv info
+        maxDate: new Date('2000-01-01'),
+        minDate: new Date(),
+
+        workArray: [
+          {"Beneficiary": "Elviro Trading BV (10) ML000467 VOSTRO ACCOUNT"},
+          {Buy_Amount: "50.000,00"},
+            {Buy_Cur: "EUR"},
+            {Currency: ""},
+            {Funding_Bank: ""},
+           { Non_USD_Beneficiary:""},
+            {Rate:"1,060000"},
+            {Reference:" 6037043.2"},
+            {Sell_Amount:"53.000,00"},
+            {Sell_Cur:"USD"},
+            {Split_Amount:""},
+            {Split_No:""},
+            {Trade_Date:"01 dec 16"},
+            {Trade_Type:"FX"},
+            {Value_Date:"05 dec 16"}
+        ],
+        cleanedData: [],
+        
       }
     },
     computed: {
@@ -79,6 +116,10 @@
         this.currentStatus = STATUS_INITIAL;
         this.uploadedFiles = [];
         this.uploadError = null;
+        this.parseInfo = null;
+        this.cleanedData = [];
+        this.maxDate = new Date('2000-01-01')
+        this.minDate = new Date()
       },
 
 
@@ -87,17 +128,17 @@
 
         this.currentStatus = STATUS_SAVING;
 
-        //this.currentStatus = STATUS_SUCCESS;
-        console.log('save functie nudwdsddede')
-
        
         upload(formData)
-          .then(wait(1500)) // DEV ONLY: wait for 1.5s 
+          //.then(wait(1500)) // DEV ONLY: wait for 1.5s 
           .then(x => {
             this.uploadedFiles = [].concat(x);
             this.currentStatus = STATUS_SUCCESS;
+            this.checkParse()
+            this.prepData()
           })
           .catch(err => {
+            console.log(err)
             this.uploadError = err.response;
             this.currentStatus = STATUS_FAILED;
           });
@@ -117,14 +158,118 @@
             formData.append(fieldName, fileList[x], fileList[x].name);
           });
 
-
-
         // save it
         this.save(formData);
-      }
+      },
+
+      checkParse () {
+
+        //check if number of columns is 16
+        //console.log(this.uploadedFiles[0].csvParse.meta.fields.length)
+        if (this.uploadedFiles[0].csvParse.meta.fields.length != 16) { 
+          this.parseInfo = "not 16 headers"
+          this.currentStatus = STATUS_FAILED;
+          return }
+
+        //check if column names & order are the same
+        //console.log(this.uploadedFiles[0].csvParse.meta.fields)
+        const goodHeaders = ["Trade_Date", "Value_Date", "Buy_Amount", "Rate", "Reference", "Funding_Bank", "Beneficiary", "Trade_Type", "Buy_Cur", "Sell_Amount", "Sell_Cur", "Split_Amount", "Currency", "Funding_Bank", "Split_No", "Non_USD_Beneficiary"]
+
+        if(console.log(this.uploadedFiles[0].csvParse.meta.fields.every(function(value, index) { return value === goodHeaders[index]}))==false){
+          this.parseInfo = "not correct named or ordered 16 headers"
+          this.currentStatus = STATUS_FAILED;
+          return
+        }
+        //check if there are errors
+        //console.log(this.uploadedFiles[0].csvParse.errors.length)
+         if (this.uploadedFiles[0].csvParse.errors.length != 0) { 
+          this.parseInfo = "csv parse found errors in the file"
+          this.currentStatus = STATUS_FAILED;
+          return }
+
+        //parse aborted
+        //console.log(this.uploadedFiles[0].csvParse.meta.aborted)
+         if (this.uploadedFiles[0].csvParse.meta.aborted == true) { 
+          this.parseInfo = "csv parse aborted"
+          this.currentStatus = STATUS_FAILED;
+          return }
+
+        //minium date en maximimum date:
+
+        this.parseInfo = "CSV type is recognised"
+
+        //start prepping the array
+        //this.prepData()
+
+      },
+
+      prepData () {
+
+         // console.log("prepdata functie")
+         // console.log(moment.now());
+
+          
+
+          numeral.locale('nl2');
+          
+
+           for (const row of this.uploadedFiles[0].csvParse.data) 
+              {
+                const tempRow = {}
+                //tempRow.tradeTimeStamp = new Date(row.Trade_Date)
+
+                tempRow.tradeTimeStamp = moment(row.Trade_Date, "DD MMM YY", 'nl')
+
+                //find max date
+                if(tempRow.tradeTimeStamp>this.maxDate) {this.maxDate = tempRow.tradeTimeStamp}
+                //find min date
+                if(tempRow.tradeTimeStamp<this.minDate) {this.minDate = tempRow.tradeTimeStamp}
+
+                tempRow.tradeTimeStamp.toString()
+
+                
+
+               tempRow.quantity = numeral(row.Buy_Amount).value()
+               tempRow.counterQuantity = numeral(row.Sell_Amount).value()
+               tempRow.rate = numeral(row.Rate).value()
+
+                  tempRow.reference = row.Reference
+                  tempRow.bookId = row.Beneficiary.match(/[ML]{2}\d{6}/g)
+
+
+                  tempRow.currency = row.Buy_Cur + '-' + row.Sell_Cur
+
+
+                
+                this.cleanedData.push(tempRow)
+              }
+       
+        }
+
+
     },
     mounted() {
       this.reset();
+
+      numeral.register('locale', 'nl2', {
+                      delimiters: {
+                          thousands: '.',
+                          decimal: ','
+                      },
+                      abbreviations: {
+                          thousand: 'k',
+                          million: 'm',
+                          billion: 'b',
+                          trillion: 't'
+                      },
+                      ordinal : function (number) {
+                          return number === 1 ? 'er' : 'ème';
+                      },
+                      currency: {
+                          symbol: '€'
+                      }
+                  });
+      
     },
   }
 
