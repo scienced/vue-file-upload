@@ -74,24 +74,6 @@
         //csv info
         maxDate: new Date('2000-01-01'),
         minDate: new Date(),
-
-        workArray: [
-          {"Beneficiary": "Elviro Trading BV (10) ML000467 VOSTRO ACCOUNT"},
-          {Buy_Amount: "50.000,00"},
-            {Buy_Cur: "EUR"},
-            {Currency: ""},
-            {Funding_Bank: ""},
-           { Non_USD_Beneficiary:""},
-            {Rate:"1,060000"},
-            {Reference:" 6037043.2"},
-            {Sell_Amount:"53.000,00"},
-            {Sell_Cur:"USD"},
-            {Split_Amount:""},
-            {Split_No:""},
-            {Trade_Date:"01 dec 16"},
-            {Trade_Type:"FX"},
-            {Value_Date:"05 dec 16"}
-        ],
         cleanedData: [],
         
       }
@@ -216,31 +198,45 @@
            for (const row of this.uploadedFiles[0].csvParse.data) 
               {
                 const tempRow = {}
-                //tempRow.tradeTimeStamp = new Date(row.Trade_Date)
 
-                tempRow.tradeTimeStamp = moment(row.Trade_Date, "DD MMM YY", 'nl')
+                  //trade date
+                  //tempRow.nldate = row.Trade_Date
+                  tempRow.tradeTimeStamp = moment.utc(row.Trade_Date, "DD MMM YY", 'nl')
+                  //find max date
+                  if(tempRow.tradeTimeStamp>this.maxDate) {this.maxDate = tempRow.tradeTimeStamp}
+                  //find min date
+                  if(tempRow.tradeTimeStamp<this.minDate) {this.minDate = tempRow.tradeTimeStamp}
+                  tempRow.tradeTimeStamp = tempRow.tradeTimeStamp.toISOString()
 
-                //find max date
-                if(tempRow.tradeTimeStamp>this.maxDate) {this.maxDate = tempRow.tradeTimeStamp}
-                //find min date
-                if(tempRow.tradeTimeStamp<this.minDate) {this.minDate = tempRow.tradeTimeStamp}
+                  //trader
+                  //loopup book in books table
 
-                tempRow.tradeTimeStamp.toString()
+                  //trade type
+                  tempRow.tradeType = 'CASH'
 
-                
+                  //rate
+                  tempRow.rate = numeral(row.Rate).value()
 
-               tempRow.quantity = numeral(row.Buy_Amount).value()
-               tempRow.counterQuantity = numeral(row.Sell_Amount).value()
-               tempRow.rate = numeral(row.Rate).value()
-
+                  //veloci id
                   tempRow.reference = row.Reference
                   tempRow.refShort = row.Reference.slice(-2)
-                  tempRow.bookId = row.Beneficiary.match(/[ML]{2}\d{6}/g)
+
+                  //boek - fixen
+                  const bookId = row.Beneficiary.match(/[ML]{2}\d{6}/g)
+                  tempRow.bookId = bookId[0]
 
 
+                  const currency = row.Buy_Cur + '-' + row.Sell_Cur
+                  //  lookup currency in currency tabel. buy_ammount as base currency else: negative sell_ammount is de base cuurency
                   tempRow.currency = row.Buy_Cur + '-' + row.Sell_Cur
+                  tempRow.quantity = numeral(row.Buy_Amount).value()
+                  tempRow.counterQuantity = numeral(row.Sell_Amount).value()*-1
+                  tempRow.buysell = 'BUY'
 
-                 // this.tradesPer = this.posts.filter(elem => elem.currency == currency)
+                 //counterparty
+                 if(tempRow.refShort == '.2' || tempRow.refShort == '.3') {
+                  tempRow.counterParty = 'Options'
+                 } else if (tempRow.refShort == '.1') {tempRow.counterParty = 'Currenex'}
 
 
                 if(tempRow.refShort == '.2' || tempRow.refShort == '.1' || tempRow.refShort == '.3') {
