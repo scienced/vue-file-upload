@@ -3,7 +3,7 @@ import * as numeral from 'numeral';
 
 function upload(formData) {
     const photos = formData.getAll('photos');
-    console.log(photos)
+    //console.log(photos)
 
     const promises = photos.map((x) => getImage(x)
         .then(img => ({
@@ -26,7 +26,7 @@ function getImage(file) {
         Papa.parse(file, { header: true,
             complete: function(results) {
                 console.log("Finished:", results.data);
-                //cleanData(results.data)
+                cleanData(results.data)
             }
         });
 
@@ -57,15 +57,21 @@ function cleanData(data) {
     for (const row of data) 
         //voor elke row in de array
     {
-        const tempRow = ''
+        const tempRow = {}
         tempRow.tradeTimeStamp = new Date(row.Trade_Date)
-        tempRow.currency.concat(row.Buy_Cur,"-",row.Sell_Cur)
-        //tempRow.quantity = numeral(row.)
+        var tempCur = ''
+        tempCur.concat(row.Buy_Cur,"-",row.Sell_Cur)
+        tempRow.currency = tempCur
+        tempRow.quantity = numeral(row.Buy_Amount).value()
         //tempRow.rate = 
+
+        console.log(tempRow)
+
 
 
 
     }
+    //console.log(cleanedData)
 
 
 }
