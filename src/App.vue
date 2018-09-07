@@ -27,8 +27,19 @@
             {{parseInfo}} <br>
             <br>
 
-            Found {{cleanedData.length}} good trades between {{minDate}} and {{maxDate}}
+            Found {{cleanedData.length}} good trades between dates: <strong>{{minDate | moment("DD-MM-YYYY")}} </strong> and <strong>{{maxDate | moment("DD-MM-YYYY")}}</strong>
+            <br>
 
+            <ul>
+            <li v-for="book in books">{{ book }}</li>
+            </ul>
+
+
+
+
+           
+
+            //todo
 
 
 
@@ -75,6 +86,7 @@
         maxDate: new Date('2000-01-01'),
         minDate: new Date(),
         cleanedData: [],
+        books: []
         
       }
     },
@@ -90,7 +102,8 @@
       },
       isFailed() {
         return this.currentStatus === STATUS_FAILED;
-      }
+      },
+     
     },
     methods: {
       reset() {
@@ -102,6 +115,7 @@
         this.cleanedData = [];
         this.maxDate = new Date('2000-01-01')
         this.minDate = new Date()
+        this.books = null
       },
 
 
@@ -119,11 +133,11 @@
             this.checkParse()
             this.prepData()
           })
-          .catch(err => {
-            console.log(err)
-            this.uploadError = err.response;
-            this.currentStatus = STATUS_FAILED;
-          });
+         // .catch(err => {
+         //   console.log(err)
+         //   this.uploadError = err.response;
+         //   this.currentStatus = STATUS_FAILED;
+         // });
 
 
       },
@@ -178,7 +192,7 @@
 
         //minium date en maximimum date:
 
-        this.parseInfo = "CSV type is recognised"
+        this.parseInfo = "CSV format is recognised"
 
         //start prepping the array
         //this.prepData()
@@ -189,6 +203,8 @@
 
          // console.log("prepdata functie")
          // console.log(moment.now());
+
+         if (this.currentStatus == 'STATUS_FAILED') {return}
 
           
 
@@ -243,6 +259,13 @@
                 this.cleanedData.push(tempRow)
                 }
               }
+
+
+        const count = this.cleanedData.reduce( (tally, val) => {
+        tally[val.bookId] = (tally[val.bookId] || 0) + 1 ;
+        this.books = tally;
+      } , {})
+      
        
         }
 
