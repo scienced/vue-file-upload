@@ -5,10 +5,10 @@
       <form enctype="multipart/form-data" novalidate v-if="isInitial || isSaving">
         <h1>Upload CSV</h1>
         <div class="dropbox">
-          <input type="file" multiple :name="uploadFieldName" :disabled="isSaving" @change="filesChange($event.target.name, $event.target.files); fileCount = $event.target.files.length"
+          <input type="file" :name="uploadFieldName" :disabled="isSaving" @change="filesChange($event.target.name, $event.target.files); fileCount = $event.target.files.length"
             accept="text/csv" class="input-file">
             <p v-if="isInitial">
-              Drag your csv file(s) here to begin<br> or click to browse
+              Drag your csv file here to begin<br> or click to browse
             </p>
             <p v-if="isSaving">
               Uploading {{ fileCount }} files...
@@ -23,23 +23,21 @@
         </p>
         <ul class="list-unstyled">
           <li v-for="item in uploadedFiles">
-            {{item.originalName}} ({{item.csvParse.data.length}} rows)<br>
+            {{item.originalName}} uploaded ({{item.csvParse.data.length}} rows)<br>
             {{parseInfo}} <br>
             <br>
 
-            Found {{cleanedData.length}} good trades between dates: <strong>{{minDate | moment("DD-MM-YYYY")}} </strong> and <strong>{{maxDate | moment("DD-MM-YYYY")}}</strong>
+            Found trades between dates: <strong>{{minDate | moment("DD-MM-YYYY")}} </strong> and <strong>{{maxDate | moment("DD-MM-YYYY")}}</strong>
             <br>
 
             <ul>
-            <li v-for="book in books">{{ book }}</li>
+            <li v-for="(value, key, index) in tally">
+              {{ key }}: {{ value }} rows
+            </li>
             </ul>
 
-
-
-
-           
-
-            //todo
+            <br>
+            After cleaning <strong>{{cleanedData.length}}</strong> good trades remain
 
 
 
@@ -86,7 +84,7 @@
         maxDate: new Date('2000-01-01'),
         minDate: new Date(),
         cleanedData: [],
-        books: []
+        tally: {}
         
       }
     },
@@ -115,7 +113,7 @@
         this.cleanedData = [];
         this.maxDate = new Date('2000-01-01')
         this.minDate = new Date()
-        this.books = null
+        this.tally = {}
       },
 
 
@@ -255,16 +253,16 @@
                  } else if (tempRow.refShort == '.1') {tempRow.counterParty = 'Currenex'}
 
 
+                //only push good rows
                 if(tempRow.refShort == '.2' || tempRow.refShort == '.1' || tempRow.refShort == '.3') {
                 this.cleanedData.push(tempRow)
                 }
+
+                //book tally
+                //console.log(tempRow.bookId)
+                this.tally[tempRow.bookId] = (this.tally[tempRow.bookId] || 0)+1
+
               }
-
-
-        const count = this.cleanedData.reduce( (tally, val) => {
-        tally[val.bookId] = (tally[val.bookId] || 0) + 1 ;
-        this.books = tally;
-      } , {})
       
        
         }
